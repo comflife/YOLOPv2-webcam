@@ -6,11 +6,17 @@ Adapted from https://github.com/CAIC-AD/YOLOPv2
 
 ## Installation
 
-`python setup.py install`
+`conda create -n realtime python=3.8.16`
+`conda activate realtime`
+`conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia`
+`conda install matplotlib`
+`conda install scikit-learn`
+
 
 
 ## Usage
-'python demo_ver2.py --source 0'
+`cd Realtime_yolopv2`
+`python demo_ver2.py --source 0`
 
 ## Models
 
