@@ -17,7 +17,7 @@ def make_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', nargs='+', type=str, default='data/weights/yolopv2.pt', help='model.pt path(s)')
     parser.add_argument('--source', type=str, default='data/example.jpg', help='source')  # file/folder, 0 for webcam
-    parser.add_argument('--img-size', type=int, default=640, help='inference size (pixels)')
+    parser.add_argument('--img-size', type=int, default=256, help='inference size (pixels)')
     parser.add_argument('--conf-thres', type=float, default=0.3, help='object confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.45, help='IOU threshold for NMS')
     parser.add_argument('--device', default='0', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
@@ -27,7 +27,7 @@ def make_parser():
     parser.add_argument('--classes', nargs='+', type=int, help='filter by class: --class 0, or --class 0 2 3')
     parser.add_argument('--agnostic-nms', action='store_true', help='class-agnostic NMS')
     parser.add_argument('--project', default='runs/detect', help='save results to project/name')
-    parser.add_argument('--name', default='exp', help='save results to project/name')
+    # parser.add_argument('--name', default='exp', help='save results to project/name')
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
     return parser
 
@@ -35,9 +35,9 @@ def make_parser():
 def detect():
     # setting and directories
     source, weights, save_txt, imgsz = opt.source, opt.weights, opt.save_txt, opt.img_size
-    save_img = not opt.nosave and not source.endswith('.txt')  # save inference images
-    save_dir = Path(increment_path(Path(opt.project) / opt.name, exist_ok=opt.exist_ok))  # increment run
-    (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
+    # save_img = not opt.nosave and not source.endswith('.txt')  # save inference images
+    # save_dir = Path(increment_path(Path(opt.project) / opt.name, exist_ok=opt.exist_ok))  # increment run
+    # (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
 
     inf_time = AverageMeter()
     waste_time = AverageMeter()
@@ -86,12 +86,12 @@ def detect():
         # Process detections
         for i, det in enumerate(pred):
             p = Path(path)
-            save_path = str(save_dir / p.with_suffix('.png').name)  # Specify the output file extension('.png')
+            # save_path = str(save_dir / p.with_suffix('.png').name)  # Specify the output file extension('.png')
             if opt.source != "0":  # 이 부분을 추가합니다.
                 frame = getattr(dataset, 'frame', 0)
-                txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')
-            else:
-                txt_path = str(save_dir / 'labels' / p.stem)
+                # txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')
+            # else:
+                # txt_path = str(save_dir / 'labels' / p.stem)
 
             s = '%gx%g ' % img.shape[2:]
             gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]
@@ -106,19 +106,21 @@ def detect():
                     if save_txt:
                         xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()
                         line = (cls, *xywh, conf) if opt.save_conf else (cls, *xywh)
-                        with open(txt_path + '.txt', 'a') as f:
-                            f.write(('%g ' * len(line)).rstrip() % line + '\n')
+                        # with open(txt_path + '.txt', 'a') as f:
+                            # f.write(('%g ' * len(line)).rstrip() % line + '\n')
 
-                    if save_img:
-                        plot_one_box(xyxy, im0, line_thickness=3)
+                    # if save_img:
+                        # plot_one_box(xyxy, im0, line_thickness=3)
 
             print(f'{s}Done. ({t2 - t1:.3f}s)')
             # show_seg_result(im0, (da_seg_mask, ll_seg_mask), is_demo=True)
             show_seg_result(im0, (da_seg_mask, ll_seg_mask), img_shape=im0.shape[:2], is_demo=True)
+            # show_seg_result(im0, (da_seg_mask, ll_seg_mask), img_shape=(480,640), is_demo=True)
+            print(im0.shape[:2])
 
 
-            if save_img:
-                cv2.imwrite(save_path, im0)
+            # if save_img:
+            #     cv2.imwrite(save_path, im0)
 
             cv2.imshow('Detection', im0)
             if cv2.waitKey(1) == ord('q'):
@@ -158,7 +160,7 @@ if __name__ == '__main__':
         detect()
 
 # 웹캠 해상도 고정 (416x416)
-width, height = 1200,600
+width, height = 480,640
 
 # 웹캠을 연다 (0은 첫 번째 카메라를 나타냅니다. 원하시는 카메라 번호를 입력하세요)
 cap = cv2.VideoCapture(0)

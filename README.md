@@ -1,22 +1,30 @@
-# Realtime_yolopv2
-A repo where anyone can develop the Yolopv2 algorithm in real time using a webcam. 
+# Realtime YOLOPv2
+A repository for developing the YOLOPv2 algorithm in real time using a webcam.
 
 Adapted from https://github.com/CAIC-AD/YOLOPv2
 
+## Info
+This code is developed to detect lane & drivable area in Autonomous driving competition. Made by Byounggun Park(Comflife).
 
 ## Installation
+(check your cuda, pytorch version before install)
 
-`conda create -n realtime python=3.8.16`
-`conda activate realtime`
-`conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia`
-`conda install matplotlib`
-`conda install scikit-learn`
-
+```bash
+conda create -n realtime python=3.8.16
+conda activate realtime
+conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
+conda install matplotlib
+conda install scikit-learn
+pip install opencv-python
+```
 
 
 ## Usage
-`cd Realtime_yolopv2`
-`python demo_ver2.py --source 0`
+(check your camera number --source 0,1,2)
+```bash
+`cd Realtime_yolopv2/ && python realtime.py --source 0`
+```
+
 
 ## Models
 

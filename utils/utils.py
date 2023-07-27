@@ -313,7 +313,7 @@ def split_for_trace_model(pred=None, anchor_grid=None):
     pred = torch.cat(z, 1)
     return pred
 
-def show_seg_result(img, result, palette=None, img_shape=None, is_demo=False):
+def show_seg_result(img, result, palette=None, img_shape=(480,640), is_demo=False):
     """
     Visualizes segmentation results on an image.
 
