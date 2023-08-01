@@ -77,7 +77,7 @@ def detect():
         t4 = time_synchronized()
 
         da_seg_mask = driving_area_mask(seg)
-        ll_seg_mask = lane_line_mask(ll)
+        ll_seg_mask_without_stopline, stop_line_detected = lane_line_mask(ll)
 
         # Process detections
         for i, det in enumerate(pred):
@@ -101,7 +101,7 @@ def detect():
 
 
             print(f'{s}Done. ({t2 - t1:.3f}s)')
-            show_seg_result(im0, (da_seg_mask, ll_seg_mask), img_shape=im0.shape[:2], is_demo=True)
+            show_seg_result(im0, (da_seg_mask, ll_seg_mask_without_stopline, stop_line_detected), img_shape=im0.shape[:2], is_demo=True)
             # show_seg_result(im0, (da_seg_mask, ll_seg_mask), img_shape=(480,640), is_demo=True)
             print(im0.shape[:2])
 

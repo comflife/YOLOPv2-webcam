@@ -12,6 +12,9 @@ import cv2
 import numpy as np
 import torch
 import torchvision
+from sklearn.cluster import KMeans
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -349,6 +352,7 @@ def show_seg_result(img, result, palette=None, img_shape=(480,640), is_demo=Fals
         color_area = np.zeros((result[0].shape[0], result[0].shape[1], 3), dtype=np.uint8)
         color_area[result[0] == 1] = [0, 0, 255] # Drivable area
         color_area[result[1] == 1] = [0, 255, 255] # lane
+        color_area[result[2] == 1] = [225,0,0]
         color_seg = color_area
 
     # Resize to match the original image shape if provided
@@ -658,16 +662,92 @@ def letterbox(img, new_shape=(640, 480), color=(114, 114, 114), auto=True, scale
     
     return img, ratio, (dw, dh)
 
+# def detect_stop_line(mask, threshold=20):
+#     """
+#     Detect stop lines in the segmentation mask based on continuous horizontal pixels.
+
+#     Args:
+#     - mask: Input segmentation mask.
+#     - threshold: Minimum number of continuous pixels to be considered as a stop line.
+
+#     Returns:
+#     - stop_line_mask: Mask with detected stop lines set to 1.
+#     """
+#     stop_line_mask = np.zeros_like(mask)
+#     for i in range(mask.shape[1]):  # iterating through columns now
+#         continuous_count = 0
+#         for j in range(mask.shape[0]):  # iterating through rows
+#             if mask[j, i] == 1:
+#                 continuous_count += 1
+#                 if continuous_count > threshold:
+#                     stop_line_mask[j-continuous_count:j, i] = 1
+#                     continuous_count = 0
+#             else:
+#                 continuous_count = 0
+#     return stop_line_mask
+
+def detect_stop_line(mask, horizontal_threshold=20, vertical_threshold=10):
+    """
+    Detect stop lines in the segmentation mask based on continuous horizontal pixels 
+    and remove long vertical lines.
+
+    Args:
+    - mask: Input segmentation mask.
+    - horizontal_threshold: Minimum number of continuous pixels in horizontal to be considered as a stop line.
+    - vertical_threshold: Maximum number of continuous pixels in vertical to be considered as not a stop line.
+
+    Returns:
+    - stop_line_mask: Mask with detected stop lines set to 1.
+    """
+    stop_line_mask = np.zeros_like(mask)
+    
+    for i in range(mask.shape[1]):  # iterating through columns
+        continuous_horizontal_count = 0
+        continuous_vertical_count = 0
+        
+        for j in range(mask.shape[0]):  # iterating through rows
+            if mask[j, i] == 1:
+                continuous_horizontal_count += 1
+                continuous_vertical_count += 1
+                
+                if continuous_horizontal_count > horizontal_threshold:
+                    stop_line_mask[j-continuous_horizontal_count:j, i] = 1
+                    continuous_horizontal_count = 0
+                
+                # If the vertical count exceeds the threshold, reset it
+                if continuous_vertical_count > vertical_threshold:
+                    stop_line_mask[j-continuous_vertical_count:j, i] = 0
+                    continuous_vertical_count = 0
+                    
+            else:
+                continuous_horizontal_count = 0
+                continuous_vertical_count = 0
+                
+    return stop_line_mask
+
+
+
+
+
 def driving_area_mask(seg = None):
     da_predict = seg[:, :, 12:372,:]
     da_seg_mask = torch.nn.functional.interpolate(da_predict, scale_factor=2, mode='bilinear')
     _, da_seg_mask = torch.max(da_seg_mask, 1)
     da_seg_mask = da_seg_mask.int().squeeze().cpu().numpy()
+
     return da_seg_mask
 
-def lane_line_mask(ll = None):
+def lane_line_mask(ll=None):
     ll_predict = ll[:, :, 12:372,:]
     ll_seg_mask = torch.nn.functional.interpolate(ll_predict, scale_factor=2, mode='bilinear')
     ll_seg_mask = torch.round(ll_seg_mask).squeeze(1)
     ll_seg_mask = ll_seg_mask.int().squeeze().cpu().numpy()
-    return ll_seg_mask
+
+    # Detect stop lines based on continuous horizontal pixels
+    stop_line_detected = detect_stop_line(ll_seg_mask)
+
+    # Remove detected stop line from ll_seg_mask
+    ll_seg_mask_without_stopline = np.where(stop_line_detected == 1, 0, ll_seg_mask)
+
+    return ll_seg_mask_without_stopline, stop_line_detected
+
