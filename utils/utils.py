@@ -686,44 +686,68 @@ def letterbox(img, new_shape=(640, 480), color=(114, 114, 114), auto=True, scale
 #                 continuous_count = 0
 #     return stop_line_mask
 
-def detect_stop_line(mask, horizontal_threshold=20, vertical_threshold=10):
-    """
-    Detect stop lines in the segmentation mask based on continuous horizontal pixels 
-    and remove long vertical lines.
+# def detect_stop_line(mask, horizontal_threshold=20, vertical_threshold=10):
+#     """
+#     Detect stop lines in the segmentation mask based on continuous horizontal pixels 
+#     and remove long vertical lines.
 
-    Args:
-    - mask: Input segmentation mask.
-    - horizontal_threshold: Minimum number of continuous pixels in horizontal to be considered as a stop line.
-    - vertical_threshold: Maximum number of continuous pixels in vertical to be considered as not a stop line.
+#     Args:
+#     - mask: Input segmentation mask.
+#     - horizontal_threshold: Minimum number of continuous pixels in horizontal to be considered as a stop line.
+#     - vertical_threshold: Maximum number of continuous pixels in vertical to be considered as not a stop line.
 
-    Returns:
-    - stop_line_mask: Mask with detected stop lines set to 1.
-    """
-    stop_line_mask = np.zeros_like(mask)
+#     Returns:
+#     - stop_line_mask: Mask with detected stop lines set to 1.
+#     """
+#     stop_line_mask = np.zeros_like(mask)
     
-    for i in range(mask.shape[1]):  # iterating through columns
-        continuous_horizontal_count = 0
-        continuous_vertical_count = 0
+#     for i in range(mask.shape[1]):  # iterating through columns
+#         continuous_horizontal_count = 0
+#         continuous_vertical_count = 0
         
-        for j in range(mask.shape[0]):  # iterating through rows
-            if mask[j, i] == 1:
-                continuous_horizontal_count += 1
-                continuous_vertical_count += 1
+#         for j in range(mask.shape[0]):  # iterating through rows
+#             if mask[j, i] == 1:
+#                 continuous_horizontal_count += 1
+#                 continuous_vertical_count += 1
                 
-                if continuous_horizontal_count > horizontal_threshold:
-                    stop_line_mask[j-continuous_horizontal_count:j, i] = 1
-                    continuous_horizontal_count = 0
+#                 if continuous_horizontal_count > horizontal_threshold:
+#                     stop_line_mask[j-continuous_horizontal_count:j, i] = 1
+#                     continuous_horizontal_count = 0
                 
-                # If the vertical count exceeds the threshold, reset it
-                if continuous_vertical_count > vertical_threshold:
-                    stop_line_mask[j-continuous_vertical_count:j, i] = 0
-                    continuous_vertical_count = 0
+#                 # If the vertical count exceeds the threshold, reset it
+#                 if continuous_vertical_count > vertical_threshold:
+#                     stop_line_mask[j-continuous_vertical_count:j, i] = 0
+#                     continuous_vertical_count = 0
                     
-            else:
-                continuous_horizontal_count = 0
-                continuous_vertical_count = 0
+#             else:
+#                 continuous_horizontal_count = 0
+#                 continuous_vertical_count = 0
                 
+#     return stop_line_mask
+
+# import numpy as np
+
+def detect_stop_line(mask, horizontal_threshold=20, vertical_threshold=10):
+    stop_line_mask = np.zeros_like(mask)
+
+    # Calculate continuous horizontal count
+    horizontal_count = np.zeros_like(mask, dtype=np.int32)
+    horizontal_count[:, 0] = mask[:, 0]
+    for i in range(1, mask.shape[1]):
+        horizontal_count[:, i] = mask[:, i] * (horizontal_count[:, i-1] + 1)
+
+    # Calculate continuous vertical count
+    vertical_count = np.zeros_like(mask, dtype=np.int32)
+    vertical_count[0, :] = mask[0, :]
+    for j in range(1, mask.shape[0]):
+        vertical_count[j, :] = mask[j, :] * (vertical_count[j-1, :] + 1)
+
+    # Identify stop lines based on horizontal and vertical counts
+    stop_line_mask = np.where((horizontal_count > horizontal_threshold) &
+                              (vertical_count <= vertical_threshold), 1, 0)
+
     return stop_line_mask
+
 
 
 
