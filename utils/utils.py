@@ -12,7 +12,7 @@ import cv2
 import numpy as np
 import torch
 import torchvision
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, DBSCAN
 
 
 
@@ -727,7 +727,7 @@ def letterbox(img, new_shape=(640, 480), color=(114, 114, 114), auto=True, scale
 
 # import numpy as np
 
-def detect_stop_line(mask, horizontal_threshold=20, vertical_threshold=10):
+def detect_stop_line(mask, horizontal_threshold=25, vertical_threshold=50): #k-city test vertical_threshold = 45
     stop_line_mask = np.zeros_like(mask)
 
     # Calculate continuous horizontal count
@@ -753,6 +753,10 @@ def detect_stop_line(mask, horizontal_threshold=20, vertical_threshold=10):
 
 
 
+
+
+
+
 def driving_area_mask(seg = None):
     da_predict = seg[:, :, 12:372,:]
     da_seg_mask = torch.nn.functional.interpolate(da_predict, scale_factor=2, mode='bilinear')
@@ -772,6 +776,7 @@ def lane_line_mask(ll=None):
 
     # Remove detected stop line from ll_seg_mask
     ll_seg_mask_without_stopline = np.where(stop_line_detected == 1, 0, ll_seg_mask)
+
 
     return ll_seg_mask_without_stopline, stop_line_detected
 
