@@ -3,12 +3,13 @@ import time
 from pathlib import Path
 import cv2
 import torch
+import numpy as np
 
 # Conclude setting / general reprocessing / plots / metrices / datasets
 from utils.utils import \
-    time_synchronized, select_device, increment_path, \
-    scale_coords, xyxy2xywh, non_max_suppression, split_for_trace_model, \
-    driving_area_mask, lane_line_mask, plot_one_box, show_seg_result, \
+    time_synchronized, select_device, increment_path, safe_polyfit,draw_grid,\
+    scale_coords, xyxy2xywh, non_max_suppression, split_for_trace_model, show_lane_lines,\
+    driving_area_mask, lane_line_mask, plot_one_box, show_seg_result, detect_lane_with_sliding_window,\
     AverageMeter, \
     LoadImages
 
@@ -76,8 +77,16 @@ def detect():
                                    agnostic=opt.agnostic_nms)
         t4 = time_synchronized()
 
-        da_seg_mask = driving_area_mask(seg)
-        ll_seg_mask_without_stopline, stop_line_detected = lane_line_mask(ll)
+        # da_seg_mask = driving_area_mask(seg)
+        # ll_seg_mask_without_stopline, stop_line_detected = lane_line_mask(ll)
+        # leftx, lefty, rightx, righty = detect_lane_with_sliding_window(ll_seg_mask_without_stopline)
+        # left_fit = safe_polyfit(lefty, leftx, 1)
+        # right_fit = safe_polyfit(righty, rightx, 1)
+
+        da_seg_mask = driving_area_mask(seg, grid_range=(4,6,2,4))
+        ll_seg_mask = lane_line_mask(ll, grid_size=6, grid_range=(3,6,1,5))
+        stop_seg_mask = lane_line_mask(ll, grid_size=6, grid_range=(0,3,2,4))
+
 
         # Process detections
         for i, det in enumerate(pred):
@@ -101,13 +110,17 @@ def detect():
 
 
             print(f'{s}Done. ({t2 - t1:.3f}s)')
-            show_seg_result(im0, (da_seg_mask, ll_seg_mask_without_stopline, stop_line_detected), img_shape=im0.shape[:2], is_demo=True)
+            # show_seg_result(im0, (da_seg_mask, ll_seg_mask_without_stopline, stop_line_detected), img_shape=im0.shape[:2], is_demo=True)
+            show_seg_result(im0, (da_seg_mask, ll_seg_mask, stop_seg_mask), img_shape=im0.shape[:2], is_demo=True)
             # show_seg_result(im0, (da_seg_mask, ll_seg_mask), img_shape=(480,640), is_demo=True)
-            print(im0.shape[:2])
+            # img_with_lane_lines = show_lane_lines(im0, left_fit, right_fit)
+            img_with_grid = draw_grid(im0, grid_size=6)
+
+            # print(ll_seg_mask_without_stopline)
 
 
 
-            cv2.imshow('Detection', im0)
+            cv2.imshow('Detection', img_with_grid)
             if cv2.waitKey(1) == ord('q'):
                 if cap:
                     cap.release()

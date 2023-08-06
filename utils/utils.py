@@ -372,6 +372,49 @@ def show_seg_result(img, result, palette=None, img_shape=(480,640), is_demo=Fals
 
     return img
 
+def show_lane_lines(img, left_fit, right_fit, color=(0, 255, 0), thickness=2):
+    """
+    Draws lane lines on an image.
+
+    Args:
+    - img: Input image.
+    - left_fit: Coefficients of the polynomial that fits the left lane line.
+    - right_fit: Coefficients of the polynomial that fits the right lane line.
+    - color: Color of the lane lines.
+    - thickness: Thickness of the lane lines.
+
+    Returns:
+    - Image with drawn lane lines.
+    """
+    if left_fit is None or right_fit is None:
+        print("Error: Polynomial fit coefficients are None.")
+        return img
+
+    ploty = np.linspace(0, img.shape[0]-1, img.shape[0])
+
+    # Calculate x values for left and right lanes
+    if len(left_fit) == 2:  # linear fit
+        leftx = left_fit[0]*ploty + left_fit[1]
+        rightx = right_fit[0]*ploty + right_fit[1]
+    elif len(left_fit) == 3:  # quadratic fit
+        leftx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
+        rightx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
+    else:
+        raise ValueError("left_fit and right_fit should be of length 2 or 3")
+
+    # Convert floating point x coordinates to integers
+    leftx = leftx.astype(np.int32)
+    rightx = rightx.astype(np.int32)
+
+    # Draw left and right lane lines
+    for i in range(img.shape[0]):
+        cv2.line(img, (leftx[i], i), (leftx[i], i), color, thickness)
+        cv2.line(img, (rightx[i], i), (rightx[i], i), color, thickness)
+
+    return img
+
+
+
 def increment_path(path, exist_ok=True, sep=''):
     # Increment path, i.e. runs/exp --> runs/exp{sep}0, runs/exp{sep}1 etc.
     path = Path(path)  # os-agnostic
@@ -749,34 +792,178 @@ def detect_stop_line(mask, horizontal_threshold=25, vertical_threshold=50): #k-c
     return stop_line_mask
 
 
+def apply_grid_mask(mask, grid_size, grid_range):
+    """
+    Applies a grid mask to limit computations within specified grid cells.
+
+    Args:
+    - mask: Input mask.
+    - grid_size: Size of the grid cells.
+    - grid_range: Range of grid cells for computations. Specified as a tuple: (start_row, end_row, start_col, end_col).
+
+    Returns:
+    - Mask limited to the specified grid cells.
+    """
+    # Copy the input mask to avoid modifying it directly
+    masked = mask.copy()
+
+    # Compute spacing between grid lines
+    spacing_x = mask.shape[1] // grid_size
+    spacing_y = mask.shape[0] // grid_size
+
+    # Compute the pixel range for computations
+    start_x = grid_range[2] * spacing_x
+    end_x = grid_range[3] * spacing_x
+    start_y = grid_range[0] * spacing_y
+    end_y = grid_range[1] * spacing_y
+
+    # Remove mask outside the pixel range
+    masked[:start_y, :] = 0
+    masked[end_y:, :] = 0
+    masked[:, :start_x] = 0
+    masked[:, end_x:] = 0
+
+    return masked
 
 
 
 
+# def driving_area_mask(seg = None):
+#     da_predict = seg[:, :, 12:372,:]
+#     da_seg_mask = torch.nn.functional.interpolate(da_predict, scale_factor=2, mode='bilinear')
+#     _, da_seg_mask = torch.max(da_seg_mask, 1)
+#     da_seg_mask = da_seg_mask.int().squeeze().cpu().numpy()
 
+#     return da_seg_mask
 
-
-
-def driving_area_mask(seg = None):
+def driving_area_mask(seg=None, grid_size=6, grid_range=(0, 6, 0, 6)):
     da_predict = seg[:, :, 12:372,:]
     da_seg_mask = torch.nn.functional.interpolate(da_predict, scale_factor=2, mode='bilinear')
     _, da_seg_mask = torch.max(da_seg_mask, 1)
     da_seg_mask = da_seg_mask.int().squeeze().cpu().numpy()
 
+    # Apply grid mask to limit computations within specified grid cells
+    da_seg_mask = apply_grid_mask(da_seg_mask, grid_size, grid_range)
+
     return da_seg_mask
 
-def lane_line_mask(ll=None):
+
+# def lane_line_mask(ll=None):
+#     ll_predict = ll[:, :, 12:372,:]
+#     ll_seg_mask = torch.nn.functional.interpolate(ll_predict, scale_factor=2, mode='bilinear')
+#     ll_seg_mask = torch.round(ll_seg_mask).squeeze(1)
+#     ll_seg_mask = ll_seg_mask.int().squeeze().cpu().numpy()
+
+#     # Detect stop lines based on continuous horizontal pixels
+#     stop_line_detected = detect_stop_line(ll_seg_mask)
+
+#     # Remove detected stop line from ll_seg_mask
+#     ll_seg_mask_without_stopline = np.where(stop_line_detected == 1, 0, ll_seg_mask)
+
+
+#     return ll_seg_mask_without_stopline, stop_line_detected
+
+def lane_line_mask(ll=None, grid_size=6, grid_range=(0, 6, 0, 6)):
     ll_predict = ll[:, :, 12:372,:]
     ll_seg_mask = torch.nn.functional.interpolate(ll_predict, scale_factor=2, mode='bilinear')
     ll_seg_mask = torch.round(ll_seg_mask).squeeze(1)
     ll_seg_mask = ll_seg_mask.int().squeeze().cpu().numpy()
 
-    # Detect stop lines based on continuous horizontal pixels
-    stop_line_detected = detect_stop_line(ll_seg_mask)
+    # Apply grid mask to limit computations within specified grid cells
+    ll_seg_mask = apply_grid_mask(ll_seg_mask, grid_size, grid_range)
 
-    # Remove detected stop line from ll_seg_mask
-    ll_seg_mask_without_stopline = np.where(stop_line_detected == 1, 0, ll_seg_mask)
+    return ll_seg_mask
 
 
-    return ll_seg_mask_without_stopline, stop_line_detected
+def detect_lane_with_sliding_window(lane_mask, nwindows=9, margin=100, minpix=50):
+    histogram = np.sum(lane_mask[lane_mask.shape[0]//2:,:], axis=0)
+    
+    midpoint = int(histogram.shape[0]//2)
+    leftx_base = np.argmax(histogram[:midpoint])
+    rightx_base = np.argmax(histogram[midpoint:]) + midpoint
+    
+    window_height = int(lane_mask.shape[0]//nwindows)
+    
+    nonzero = lane_mask.nonzero()
+    nonzeroy = np.array(nonzero[0])
+    nonzerox = np.array(nonzero[1])
+    
+    leftx_current = leftx_base
+    rightx_current = rightx_base
+    
+    left_lane_inds = []
+    right_lane_inds = []
+    
+    for window in range(nwindows):
+        win_y_low = lane_mask.shape[0] - (window+1)*window_height
+        win_y_high = lane_mask.shape[0] - window*window_height
+        win_xleft_low = leftx_current - margin
+        win_xleft_high = leftx_current + margin
+        win_xright_low = rightx_current - margin
+        win_xright_high = rightx_current + margin
+        
+        good_left_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) & 
+                          (nonzerox >= win_xleft_low) &  (nonzerox < win_xleft_high)).nonzero()[0]
+        good_right_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) & 
+                           (nonzerox >= win_xright_low) &  (nonzerox < win_xright_high)).nonzero()[0]
+        
+        left_lane_inds.append(good_left_inds)
+        right_lane_inds.append(good_right_inds)
+        
+        if len(good_left_inds) > minpix:
+            leftx_current = int(np.mean(nonzerox[good_left_inds]))
+        if len(good_right_inds) > minpix:        
+            rightx_current = int(np.mean(nonzerox[good_right_inds]))
+    
+    left_lane_inds = np.concatenate(left_lane_inds)
+    right_lane_inds = np.concatenate(right_lane_inds)
+
+    leftx = nonzerox[left_lane_inds]
+    lefty = nonzeroy[left_lane_inds] 
+    rightx = nonzerox[right_lane_inds]
+    righty = nonzeroy[right_lane_inds]
+    
+    return leftx, lefty, rightx, righty
+
+def safe_polyfit(y, x, order):
+    try:
+        return np.polyfit(y, x, order)
+    except TypeError:
+        print("Error: inputs to polyfit are not of proper types or shape.")
+        return None
+    except ValueError:
+        print("Error: No valid data points to fit the polynomial.")
+        return None
+
+
+
+def draw_grid(image, grid_size, color=(0, 255, 0), line_width=1):
+    """
+    Draws a grid on the image.
+
+    Args:
+    - image: Input image.
+    - grid_size: Size of the grid cells.
+    - color: Color of the grid lines.
+    - line_width: Width of the grid lines.
+
+    Returns:
+    - Image with overlayed grid.
+    """
+    # Copy the input image to avoid modifying it directly
+    img = image.copy()
+
+    # Compute spacing between grid lines
+    spacing_x = img.shape[1] // grid_size
+    spacing_y = img.shape[0] // grid_size
+
+    # Draw vertical grid lines
+    for x in range(0, img.shape[1], spacing_x):
+        cv2.line(img, (x, 0), (x, img.shape[0]), color, line_width)
+
+    # Draw horizontal grid lines
+    for y in range(0, img.shape[0], spacing_y):
+        cv2.line(img, (0, y), (img.shape[1], y), color, line_width)
+
+    return img
 
