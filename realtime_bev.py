@@ -129,13 +129,17 @@ def detect():
         t4 = time_synchronized()
 
         da_seg_mask = driving_area_mask(seg, grid_size=10, grid_range=(4,6,2,4))
-        ll_seg_mask = lane_line_mask(ll, grid_size=10, grid_range=(3,6,1,5))
+        # ll_seg_mask = lane_line_mask(ll, grid_size=10, grid_range=(3,6,1,5))
+        ll_seg_mask_left = lane_line_mask(ll, grid_size=10, grid_range=(3,6,1,5))
+        ll_seg_mask_strong_left = lane_line_mask(ll, grid_size=10, grid_range=(3,6,1,5))
+        ll_seg_mask_right = lane_line_mask(ll, grid_size=10, grid_range=(3,6,1,5))
+        ll_seg_mask_strong_right = lane_line_mask(ll, grid_size=10, grid_range=(3,6,1,5))
         stop_seg_mask = lane_line_mask(ll, grid_size=10, grid_range=(0,3,2,4))
 
         # Check if the masks are empty
         # print('da_seg_mask is empty:', is_mask_empty(da_seg_mask))
-        print('ll_seg_mask is empty:', is_mask_empty(ll_seg_mask))
-        print('stop_seg_mask is empty:', is_mask_empty(stop_seg_mask))
+        # print('ll_seg_mask is empty:', is_mask_empty(ll_seg_mask))
+        # print('stop_seg_mask is empty:', is_mask_empty(stop_seg_mask))
 
         # Process detections
         for i, det in enumerate(pred):
@@ -158,8 +162,8 @@ def detect():
                         line = (cls, *xywh, conf) if opt.save_conf else (cls, *xywh)
 
             print(f'{s}Done. ({t2 - t1:.3f}s)')
-            show_seg_result(im0, (da_seg_mask, ll_seg_mask, stop_seg_mask), img_shape=im0.shape[:2], is_demo=True)
-
+            # show_seg_result(im0, (da_seg_mask, ll_seg_mask, stop_seg_mask), img_shape=im0.shape[:2], is_demo=True)
+            show_seg_result(im0, (da_seg_mask, ll_seg_mask_left, ll_seg_mask_strong_left,ll_seg_mask_right,ll_seg_mask_strong_right, stop_seg_mask), img_shape=im0.shape[:2], is_demo=True)
             # Bird eye view transformation
             im0 = bird_eye_view_transform(im0, M)
             
