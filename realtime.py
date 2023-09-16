@@ -31,17 +31,16 @@ import numpy as np
 
 # Conclude setting / general reprocessing / plots / metrices / datasets
 from utils.utils import \
-    time_synchronized, select_device, increment_path, safe_polyfit,draw_grid,\
+    time_synchronized, select_device, increment_path, safe_polyfit, draw_grid,\
     scale_coords, xyxy2xywh, non_max_suppression, split_for_trace_model, show_lane_lines,\
     driving_area_mask, lane_line_mask, plot_one_box, show_seg_result, detect_lane_with_sliding_window,\
     AverageMeter, \
     LoadImages
 
-
 def make_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', nargs='+', type=str, default='data/weights/yolopv2.pt', help='model.pt path(s)')
-    parser.add_argument('--source', type=str, default='data/example.jpg', help='source')  # file/folder, 0 for webcam
+    parser.add_argument('--source', type=str, default='0', help='source')  # file/folder, 0 for webcam
     parser.add_argument('--img-size', type=int, default=256, help='inference size (pixels)')
     parser.add_argument('--conf-thres', type=float, default=0.3, help='object confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.45, help='IOU threshold for NMS')
@@ -55,11 +54,9 @@ def make_parser():
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
     return parser
 
-
 def detect():
     # setting and directories
     source, weights, save_txt, imgsz = opt.source, opt.weights, opt.save_txt, opt.img_size
-
     inf_time = AverageMeter()
     waste_time = AverageMeter()
     nms_time = AverageMeter()
@@ -76,8 +73,8 @@ def detect():
 
     # Set Dataloader
     vid_path, vid_writer = None, None
-    if opt.source == "0":  # 카메라 입력 체크
-        cap = cv2.VideoCapture(0)
+    if opt.source.isdigit():  # check if the input value is a number
+        cap = cv2.VideoCapture(int(opt.source))  # convert to integer and pass
         if not cap.isOpened():
             raise IOError("Cannot open webcam")
     else:
@@ -101,23 +98,14 @@ def detect():
                                    agnostic=opt.agnostic_nms)
         t4 = time_synchronized()
 
-        # da_seg_mask = driving_area_mask(seg)
-        # ll_seg_mask_without_stopline, stop_line_detected = lane_line_mask(ll)
-        # leftx, lefty, rightx, righty = detect_lane_with_sliding_window(ll_seg_mask_without_stopline)
-        # left_fit = safe_polyfit(lefty, leftx, 1)
-        # right_fit = safe_polyfit(righty, rightx, 1)
-
-        da_seg_mask = driving_area_mask(seg, grid_range=(4,6,2,4))
-        ll_seg_mask = lane_line_mask(ll, grid_size=6, grid_range=(3,6,1,5))
-        stop_seg_mask = lane_line_mask(ll, grid_size=6, grid_range=(0,3,2,4))
-
+        da_seg_mask = driving_area_mask(seg)
+        ll_seg_mask = lane_line_mask(ll, grid_size=6)
 
         # Process detections
         for i, det in enumerate(pred):
             p = Path(path)
             if opt.source != "0":
                 frame = getattr(dataset, 'frame', 0)
-
             s = '%gx%g ' % img.shape[2:]
             gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]
 
@@ -132,17 +120,9 @@ def detect():
                         xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()
                         line = (cls, *xywh, conf) if opt.save_conf else (cls, *xywh)
 
-
             print(f'{s}Done. ({t2 - t1:.3f}s)')
-            # show_seg_result(im0, (da_seg_mask, ll_seg_mask_without_stopline, stop_line_detected), img_shape=im0.shape[:2], is_demo=True)
-            show_seg_result(im0, (da_seg_mask, ll_seg_mask, stop_seg_mask), img_shape=im0.shape[:2], is_demo=True)
-            # show_seg_result(im0, (da_seg_mask, ll_seg_mask), img_shape=(480,640), is_demo=True)
-            # img_with_lane_lines = show_lane_lines(im0, left_fit, right_fit)
+            show_seg_result(im0, (da_seg_mask, ll_seg_mask), img_shape=im0.shape[:2], is_demo=True)
             img_with_grid = draw_grid(im0, grid_size=6)
-
-            # print(ll_seg_mask_without_stopline)
-
-
 
             cv2.imshow('Detection', img_with_grid)
             if cv2.waitKey(1) == ord('q'):
@@ -155,7 +135,7 @@ def detect():
         nms_time.update(t4 - t3, img.size(0))
         waste_time.update(tw2 - tw1, img.size(0))
 
-    if opt.source == "0":
+    if opt.source.isdigit():
         while True:
             path = "webcam_frame"
             ret, im0 = cap.read()
@@ -173,12 +153,9 @@ def detect():
     print('inf : (%.4fs/frame)   nms : (%.4fs/frame)' % (inf_time.avg, nms_time.avg))
     print(f'Done. ({time.time() - t0:.3f}s)')
 
-
 if __name__ == '__main__':
     opt = make_parser().parse_args()
     print(opt)
 
     with torch.no_grad():
         detect()
-
-

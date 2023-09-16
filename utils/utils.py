@@ -376,10 +376,6 @@ def show_seg_result(img, result, palette=None, img_shape=(480,640), is_demo=Fals
         color_area = np.zeros((result[0].shape[0], result[0].shape[1], 3), dtype=np.uint8)
         color_area[result[0] == 1] = [0, 0, 255] # Drivable area
         color_area[result[1] == 1] = [0, 255, 255] # lane
-        color_area[result[2] == 1] = [0, 255, 0] # strong lane
-        color_area[result[3] == 1] = [0, 255, 255] # lane
-        color_area[result[4] == 1] = [0, 255, 0] # strong lane
-        color_area[result[5] == 1] = [225,0,0]
         color_seg = color_area
 
     # Resize to match the original image shape if provided
@@ -853,16 +849,6 @@ def apply_grid_mask(mask, grid_size, grid_range):
     return masked
 
 
-
-
-# def driving_area_mask(seg = None):
-#     da_predict = seg[:, :, 12:372,:]
-#     da_seg_mask = torch.nn.functional.interpolate(da_predict, scale_factor=2, mode='bilinear')
-#     _, da_seg_mask = torch.max(da_seg_mask, 1)
-#     da_seg_mask = da_seg_mask.int().squeeze().cpu().numpy()
-
-#     return da_seg_mask
-
 def driving_area_mask(seg=None, grid_size=6, grid_range=(0, 6, 0, 6)):
     da_predict = seg[:, :, 12:372,:]
     da_seg_mask = torch.nn.functional.interpolate(da_predict, scale_factor=2, mode='bilinear')
@@ -875,20 +861,6 @@ def driving_area_mask(seg=None, grid_size=6, grid_range=(0, 6, 0, 6)):
     return da_seg_mask
 
 
-# def lane_line_mask(ll=None):
-#     ll_predict = ll[:, :, 12:372,:]
-#     ll_seg_mask = torch.nn.functional.interpolate(ll_predict, scale_factor=2, mode='bilinear')
-#     ll_seg_mask = torch.round(ll_seg_mask).squeeze(1)
-#     ll_seg_mask = ll_seg_mask.int().squeeze().cpu().numpy()
-
-#     # Detect stop lines based on continuous horizontal pixels
-#     stop_line_detected = detect_stop_line(ll_seg_mask)
-
-#     # Remove detected stop line from ll_seg_mask
-#     ll_seg_mask_without_stopline = np.where(stop_line_detected == 1, 0, ll_seg_mask)
-
-
-#     return ll_seg_mask_without_stopline, stop_line_detected
 
 def lane_line_mask(ll=None, grid_size=6, grid_range=(0, 6, 0, 6)):
     ll_predict = ll[:, :, 12:372,:]

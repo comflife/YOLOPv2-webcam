@@ -45,7 +45,7 @@ def main():
     cap = cv2.VideoCapture(2)
 
     # 저장할 경로 설정
-    path = '/home/bg/myssd/kcity_image/images2'
+    path = '/home/bg/myssd/kcity_image/tollgate_cone'
     os.makedirs(path, exist_ok=True) # 폴더가 없으면 생성
 
     # 가장 최근의 파일 번호를 가져와 다음 파일 번호를 설정
