@@ -5,7 +5,7 @@ Still adding more advanced algorithms.
 Adapted from https://github.com/CAIC-AD/YOLOPv2
 
 ## Info
-This code is developed to detect lane & drivable area in Autonomous driving competition. Made by Byounggun Park(Comflife).
+This code is developed to detect lane & drivable area in Autonomous driving competition. Made by Byounggun Park(Comflife). You can watch realtime record video in data/demo.
 
 ## Installation
 (check your cuda, pytorch version before install)
