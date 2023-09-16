@@ -1,6 +1,6 @@
 # YOLOPv3
 A repository for developing the YOLOPv2 model in real time using a webcam.
-Added Bev and more advanced algorithms.
+Still adding more advanced algorithms.
 
 Adapted from https://github.com/CAIC-AD/YOLOPv2
 
