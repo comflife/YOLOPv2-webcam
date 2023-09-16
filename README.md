@@ -23,7 +23,7 @@ pip install opencv-python
 ## Usage
 (check your camera number --source 0,1,2)
 ```bash
-`cd Realtime_yolopv2/ && python realtime.py --source 0`
+`python3 realtime.py --source 0`
 ```
 
 
