@@ -1,4 +1,4 @@
-# YOLOPv3
+# YOLOPv2-webcam
 A repository for developing the YOLOPv2 model in real time using a webcam.
 Still adding more advanced algorithms.
 
